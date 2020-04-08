@@ -11,6 +11,8 @@ def make_directories():
         os.makedirs("JPEGImages/")
     if not os.path.exists("depth/"):
         os.makedirs("depth/")
+    if not os.path.exists("8bit_depth/"):
+        os.makedirs("8bit_depth/")
 
 if __name__ == "__main__":
     make_directories()
@@ -33,6 +35,7 @@ if __name__ == "__main__":
         filecad = "JPEGImages/%s.jpg" % number
 
         filedepth = "depth/%s.png" % number
+        filedepth_8b = "8bit_depth/%s.png" % number
         frames = pipeline.wait_for_frames()
         aligned_frames = align.process(frames)
 
@@ -43,16 +46,28 @@ if __name__ == "__main__":
             continue
 
         d = np.asanyarray(aligned_depth_frame.get_data())
+        d8 = cv2.convertScaleAbs(d, alpha=0.3)
+        pos = np.where(d8 == 0)
+        d8[pos] = 255
         c = np.asanyarray(color_frame.get_data())
         cv2.imshow('COLOR IMAGE', c)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cv2.imwrite(filecad, c)
-            writer = png.Writer(width=d.shape[1], height=d.shape[0],
+            writer16 = png.Writer(width=d.shape[1], height=d.shape[0],
                                 bitdepth=16, greyscale=True)
+            writer8 = png.Writer(width=d.shape[1], height=d.shape[0],
+                                  bitdepth=8, greyscale=True)
+
             with open(filedepth, 'wb') as f:
+
                 zgray2list = d.tolist()
-                writer.write(f, zgray2list)
+                writer16.write(f, zgray2list)
+
+            with open(filedepth_8b, 'wb') as f2:
+
+                zgray2list_b8 = d8.tolist()
+                writer8.write(f2, zgray2list_b8)
             number += 1
 
     cv2.destroyAllWindows()
